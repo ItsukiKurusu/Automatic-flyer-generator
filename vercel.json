@@ -1,0 +1,15 @@
+{
+  "buildCommand": "pnpm build",
+  "installCommand": "pnpm install",
+  "devCommand": "pnpm dev",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "functions": {
+    "app/api/export/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/generate-template/route.ts": {
+      "maxDuration": 30
+    }
+  }
+}

@@ -11,8 +11,10 @@ export class GeminiService {
   /**
    * テキスト生成用のモデルを取得
    */
-  getModel(modelName: string = "gemini-1.5-flash") {
-    return this.genAI.getGenerativeModel({ model: modelName });
+  getModel(modelName: string = "gemini-1.5-pro") {
+    return this.genAI.getGenerativeModel({ 
+      model: modelName
+    });
   }
 
   /**
@@ -20,7 +22,7 @@ export class GeminiService {
    */
   async generateText(prompt: string, modelName?: string): Promise<string> {
     try {
-      console.log('[Gemini] Generating text with model:', modelName || 'gemini-1.5-flash');
+      console.log('[Gemini] Generating text with model:', modelName || 'gemini-1.5-pro');
       const model = this.getModel(modelName);
       const result = await model.generateContent(prompt);
       const response = result.response;

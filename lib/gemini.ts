@@ -20,14 +20,21 @@ export class GeminiService {
    */
   async generateText(prompt: string, modelName?: string): Promise<string> {
     try {
+      console.log('[Gemini] Generating text with model:', modelName || 'gemini-1.5-flash');
       const model = this.getModel(modelName);
       const result = await model.generateContent(prompt);
       const response = result.response;
       const text = response.text();
+      console.log('[Gemini] Text generated successfully, length:', text.length);
       return text;
-    } catch (error) {
-      console.error("Gemini API error:", error);
-      throw new Error(`Failed to generate text: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } catch (error: any) {
+      console.error('[Gemini] API error details:', {
+        message: error?.message,
+        status: error?.status,
+        statusText: error?.statusText,
+        error: error
+      });
+      throw new Error(`Failed to generate text: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
     }
   }
 
@@ -116,10 +123,12 @@ export function getGeminiService(): GeminiService {
   
   if (!geminiInstance) {
     const apiKey = process.env.GEMINI_API_KEY;
+    console.log('[Gemini] Initializing service, API key present:', !!apiKey, 'Key length:', apiKey?.length);
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY environment variable is required");
     }
     geminiInstance = new GeminiService(apiKey);
+    console.log('[Gemini] Service initialized successfully');
   }
   return geminiInstance;
 }

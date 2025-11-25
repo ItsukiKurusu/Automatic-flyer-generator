@@ -3,9 +3,13 @@ import { getGeminiService } from '@/lib/gemini'
 
 export async function POST(request: Request) {
   try {
+    console.log('[API] Received template generation request');
     const { prompt } = await request.json()
+    console.log('[API] User prompt:', prompt);
 
+    console.log('[API] Initializing Gemini service...');
     const gemini = getGeminiService()
+    console.log('[API] Gemini service initialized');
 
     const systemPrompt = `あなたはチラシ・POP生成のエキスパートです。ユーザーの要望を分析し、以下のJSON形式でテンプレートを生成してください。
 
@@ -30,7 +34,9 @@ export async function POST(request: Request) {
 
 ユーザーの要望: ${prompt}`
 
+    console.log('[API] Calling Gemini API...');
     const text = await gemini.generateText(systemPrompt)
+    console.log('[API] Received response from Gemini, length:', text.length);
 
     // Parse the generated JSON
     const jsonMatch = text.match(/\{[\s\S]*\}/)
@@ -55,13 +61,19 @@ export async function POST(request: Request) {
       colorTheme: parsedTemplate.colorTheme || '#3B82F6'
     }
 
+    console.log('[API] Template generated successfully');
     return NextResponse.json(template)
-  } catch (error) {
-    console.error('[v0] Template generation error:', error)
+  } catch (error: any) {
+    console.error('[API] Template generation error:', {
+      message: error?.message,
+      stack: error?.stack,
+      error: error
+    });
     return NextResponse.json(
       { 
         error: 'テンプレートの生成に失敗しました',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : JSON.stringify(error),
+        hint: 'Gemini APIキーが正しく設定されているか確認してください'
       },
       { status: 500 }
     )

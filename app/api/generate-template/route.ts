@@ -1,13 +1,13 @@
-import { generateText } from 'ai'
 import { NextResponse } from 'next/server'
+import { getGeminiService } from '@/lib/gemini'
 
 export async function POST(request: Request) {
   try {
     const { prompt } = await request.json()
 
-    const { text } = await generateText({
-      model: 'openai/gpt-4o-mini',
-      system: `あなたはチラシ・POP生成のエキスパートです。ユーザーの要望を分析し、以下のJSON形式でテンプレートを生成してください。
+    const gemini = getGeminiService()
+
+    const systemPrompt = `あなたはチラシ・POP生成のエキスパートです。ユーザーの要望を分析し、以下のJSON形式でテンプレートを生成してください。
 
 返答は必ずJSON形式のみで、他の説明は不要です。
 
@@ -26,12 +26,19 @@ export async function POST(request: Request) {
 }
 
 ユーザーが具体的な情報を提供していない項目は、空文字列""にしてください。
-色は青系=#3B82F6、緑系=#10B981、オレンジ系=#F59E0B、赤系=#EF4444、紫系=#8B5CF6、ピンク系=#EC4899を基準にしてください。`,
-      prompt: prompt,
-    })
+色は青系=#3B82F6、緑系=#10B981、オレンジ系=#F59E0B、赤系=#EF4444、紫系=#8B5CF6、ピンク系=#EC4899を基準にしてください。
+
+ユーザーの要望: ${prompt}`
+
+    const text = await gemini.generateText(systemPrompt)
 
     // Parse the generated JSON
-    const template = JSON.parse(text)
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error("JSON形式の応答が取得できませんでした")
+    }
+    
+    const template = JSON.parse(jsonMatch[0])
 
     return NextResponse.json(template)
   } catch (error) {

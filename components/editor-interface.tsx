@@ -19,7 +19,22 @@ interface EditorInterfaceProps {
 }
 
 export function EditorInterface({ template, onBack, onTemplateUpdate }: EditorInterfaceProps) {
-  const [localTemplate, setLocalTemplate] = useState(template)
+  // テンプレートにデフォルト値を設定
+  const normalizedTemplate: FlyerTemplate = {
+    imageArea: template?.imageArea || '上半分',
+    catchCopy: template?.catchCopy || 'キャッチコピー',
+    description: template?.description || '説明文',
+    storeInfo: {
+      name: template?.storeInfo?.name || '',
+      address: template?.storeInfo?.address || '',
+      hours: template?.storeInfo?.hours || '',
+      tel: template?.storeInfo?.tel || '',
+      access: template?.storeInfo?.access || ''
+    },
+    colorTheme: template?.colorTheme || '#3B82F6'
+  }
+  
+  const [localTemplate, setLocalTemplate] = useState(normalizedTemplate)
   const [showExport, setShowExport] = useState(false)
 
   const updateTemplate = (updates: Partial<FlyerTemplate>) => {

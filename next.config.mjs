@@ -6,9 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  experimental: {
-    serverComponentsExternalPackages: ['@google/generative-ai']
-  },
+  serverExternalPackages: ['@google/generative-ai']
 }
 
 export default nextConfig

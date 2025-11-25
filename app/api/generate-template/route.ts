@@ -38,13 +38,31 @@ export async function POST(request: Request) {
       throw new Error("JSON形式の応答が取得できませんでした")
     }
     
-    const template = JSON.parse(jsonMatch[0])
+    const parsedTemplate = JSON.parse(jsonMatch[0])
+    
+    // デフォルト値でテンプレートを正規化
+    const template = {
+      imageArea: parsedTemplate.imageArea || '上半分',
+      catchCopy: parsedTemplate.catchCopy || 'キャッチコピー',
+      description: parsedTemplate.description || '説明文',
+      storeInfo: {
+        name: parsedTemplate.storeInfo?.name || '',
+        address: parsedTemplate.storeInfo?.address || '',
+        hours: parsedTemplate.storeInfo?.hours || '',
+        tel: parsedTemplate.storeInfo?.tel || '',
+        access: parsedTemplate.storeInfo?.access || ''
+      },
+      colorTheme: parsedTemplate.colorTheme || '#3B82F6'
+    }
 
     return NextResponse.json(template)
   } catch (error) {
     console.error('[v0] Template generation error:', error)
     return NextResponse.json(
-      { error: 'テンプレートの生成に失敗しました' },
+      { 
+        error: 'テンプレートの生成に失敗しました',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }

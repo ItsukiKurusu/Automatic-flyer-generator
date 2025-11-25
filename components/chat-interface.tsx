@@ -33,10 +33,31 @@ export function ChatInterface({ onTemplateGenerated }: ChatInterfaceProps) {
         body: JSON.stringify({ prompt: input })
       })
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
       const template = await response.json()
-      onTemplateGenerated(template)
+      
+      // デフォルト値を設定してデータ整合性を確保
+      const normalizedTemplate = {
+        imageArea: template.imageArea || '上半分',
+        catchCopy: template.catchCopy || 'キャッチコピー',
+        description: template.description || '説明文',
+        storeInfo: {
+          name: template.storeInfo?.name || '',
+          address: template.storeInfo?.address || '',
+          hours: template.storeInfo?.hours || '',
+          tel: template.storeInfo?.tel || '',
+          access: template.storeInfo?.access || ''
+        },
+        colorTheme: template.colorTheme || '#3B82F6'
+      }
+      
+      onTemplateGenerated(normalizedTemplate)
     } catch (error) {
       console.error('[v0] Template generation error:', error)
+      alert('テンプレートの生成に失敗しました。もう一度お試しください。')
     } finally {
       setIsGenerating(false)
     }

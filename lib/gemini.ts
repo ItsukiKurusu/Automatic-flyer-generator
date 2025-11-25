@@ -22,11 +22,12 @@ export class GeminiService {
     try {
       const model = this.getModel(modelName);
       const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
+      const response = result.response;
+      const text = response.text();
+      return text;
     } catch (error) {
       console.error("Gemini API error:", error);
-      throw error;
+      throw new Error(`Failed to generate text: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -108,6 +109,11 @@ ${targetAudience ? `ターゲット層: ${targetAudience}` : ""}
 let geminiInstance: GeminiService | null = null;
 
 export function getGeminiService(): GeminiService {
+  // サーバーサイドでのみ実行されることを確認
+  if (typeof window !== 'undefined') {
+    throw new Error("GeminiService can only be used on the server side");
+  }
+  
   if (!geminiInstance) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {

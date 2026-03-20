@@ -2,16 +2,23 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Gemini APIの設定
 export class GeminiService {
-  private genAI: GoogleGenerativeAI;
+  private genAI: GoogleGenerativeAI | null = null;
+  private isMock: boolean = false;
 
-  constructor(apiKey: string) {
-    this.genAI = new GoogleGenerativeAI(apiKey);
+  constructor(apiKey: string | undefined) {
+    if (apiKey) {
+      this.genAI = new GoogleGenerativeAI(apiKey);
+    } else {
+      console.warn('[Gemini] No API key provided, running in Mock Mode.');
+      this.isMock = true;
+    }
   }
 
   /**
    * テキスト生成用のモデルを取得
    */
   getModel(modelName: string = "gemini-1.5-pro") {
+    if (!this.genAI) throw new Error("GenAI not initialized");
     return this.genAI.getGenerativeModel({ 
       model: modelName
     });
@@ -21,6 +28,33 @@ export class GeminiService {
    * テキストを生成する
    */
   async generateText(prompt: string, modelName?: string): Promise<string> {
+    if (this.isMock) {
+      console.log('[Gemini] Mock Mode: Returning sample template for prompt:', prompt.substring(0, 50));
+      // Mock prompt-based response
+      if (prompt.includes("refinePrompt")) {
+        return JSON.stringify({
+          imageArea: "上半分",
+          catchCopy: "AIで更新されたキャッチコピー",
+          tagline: "修正リクエストを反映しました",
+          description: "モックモードでの修正です。実際はGemini APIが必要です。",
+          benefits: ["メリット1", "メリット2"],
+          storeInfo: { name: "モック店舗", address: "", hours: "", tel: "", access: "" },
+          colorTheme: "#F59E0B",
+          layoutStyle: "playful"
+        });
+      }
+      return JSON.stringify({
+        imageArea: "上半分",
+        catchCopy: "モック: 素晴らしいチラシ",
+        tagline: "Gemini APIキーを設定してください",
+        description: "現在モックモードで動作しています。本物の生成にはGEMINI_API_KEYが必要です。",
+        benefits: ["魅力的なデザイン", "簡単操作", "即時生成"],
+        storeInfo: { name: "モック店舗", address: "東京都渋谷区...", hours: "10:00-19:00", tel: "03-xxxx-xxxx", access: "渋谷駅から徒歩5分" },
+        colorTheme: "#3B82F6",
+        layoutStyle: "modern"
+      });
+    }
+
     try {
       console.log('[Gemini] Generating text with model:', modelName || 'gemini-1.5-pro');
       const model = this.getModel(modelName);
@@ -47,6 +81,7 @@ export class GeminiService {
     messages: Array<{ role: "user" | "model"; parts: string }>,
     modelName?: string
   ): Promise<string> {
+    if (this.isMock) return "Mock response";
     try {
       const model = this.getModel(modelName);
       const chat = model.startChat({
@@ -125,12 +160,8 @@ export function getGeminiService(): GeminiService {
   
   if (!geminiInstance) {
     const apiKey = process.env.GEMINI_API_KEY;
-    console.log('[Gemini] Initializing service, API key present:', !!apiKey, 'Key length:', apiKey?.length);
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable is required");
-    }
+    console.log('[Gemini] Initializing service, API key present:', !!apiKey);
     geminiInstance = new GeminiService(apiKey);
-    console.log('[Gemini] Service initialized successfully');
   }
   return geminiInstance;
 }

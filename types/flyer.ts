@@ -1,7 +1,9 @@
 export interface FlyerTemplate {
-  imageArea: string
+  imageArea: '上半分' | '全幅' | '左半分' | '右半分'
   catchCopy: string
+  tagline?: string
   description: string
+  benefits?: string[]
   storeInfo: {
     name: string
     address: string
@@ -10,4 +12,5 @@ export interface FlyerTemplate {
     access: string
   }
   colorTheme: string
+  layoutStyle?: 'modern' | 'classic' | 'playful'
 }

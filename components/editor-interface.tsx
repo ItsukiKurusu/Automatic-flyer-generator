@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, Download, ImageIcon, Palette, FileText, Store } from 'lucide-react'
+import { ArrowLeft, Download, ImageIcon, Palette, FileText, Store, Sparkles, Loader2, Layout } from 'lucide-react'
 import { FlyerPreview } from '@/components/flyer-preview'
 import { ExportDialog } from '@/components/export-dialog'
 import type { FlyerTemplate } from '@/types/flyer'
+import { toast } from 'sonner'
 
 interface EditorInterfaceProps {
   template: FlyerTemplate
@@ -19,23 +20,10 @@ interface EditorInterfaceProps {
 }
 
 export function EditorInterface({ template, onBack, onTemplateUpdate }: EditorInterfaceProps) {
-  // テンプレートにデフォルト値を設定
-  const normalizedTemplate: FlyerTemplate = {
-    imageArea: template?.imageArea || '上半分',
-    catchCopy: template?.catchCopy || 'キャッチコピー',
-    description: template?.description || '説明文',
-    storeInfo: {
-      name: template?.storeInfo?.name || '',
-      address: template?.storeInfo?.address || '',
-      hours: template?.storeInfo?.hours || '',
-      tel: template?.storeInfo?.tel || '',
-      access: template?.storeInfo?.access || ''
-    },
-    colorTheme: template?.colorTheme || '#3B82F6'
-  }
-  
-  const [localTemplate, setLocalTemplate] = useState(normalizedTemplate)
+  const [localTemplate, setLocalTemplate] = useState<FlyerTemplate>(template)
   const [showExport, setShowExport] = useState(false)
+  const [refinePrompt, setRefinePrompt] = useState('')
+  const [isRefining, setIsRefining] = useState(false)
 
   const updateTemplate = (updates: Partial<FlyerTemplate>) => {
     const newTemplate = { ...localTemplate, ...updates }
@@ -49,6 +37,35 @@ export function EditorInterface({ template, onBack, onTemplateUpdate }: EditorIn
     })
   }
 
+  const handleRefine = async () => {
+    if (!refinePrompt.trim()) return
+
+    setIsRefining(true)
+    try {
+      const response = await fetch('/api/refine-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentTemplate: localTemplate,
+          refinePrompt: refinePrompt
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to refine')
+
+      const updatedTemplate = await response.json()
+      setLocalTemplate(updatedTemplate)
+      onTemplateUpdate(updatedTemplate)
+      setRefinePrompt('')
+      toast.success('AIによってチラシが更新されました')
+    } catch (error) {
+      console.error('Refinement error:', error)
+      toast.error('AIによる更新に失敗しました')
+    } finally {
+      setIsRefining(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -58,7 +75,10 @@ export function EditorInterface({ template, onBack, onTemplateUpdate }: EditorIn
             <ArrowLeft className="w-4 h-4 mr-2" />
             戻る
           </Button>
-          <h1 className="text-lg font-semibold">テンプレート編集</h1>
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <h1 className="text-lg font-semibold hidden sm:block">フライヤーデザイナー</h1>
+          </div>
           <Button onClick={() => setShowExport(true)}>
             <Download className="w-4 h-4 mr-2" />
             エクスポート
@@ -70,23 +90,50 @@ export function EditorInterface({ template, onBack, onTemplateUpdate }: EditorIn
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Editor Panel */}
           <div className="space-y-6">
+            {/* AI Refinement Card */}
+            <Card className="p-4 bg-primary/5 border-primary/20">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-primary">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-sm font-bold">AIに修正を依頼する</span>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="例：もっと高級感を出して、特典を赤字で強調して"
+                    value={refinePrompt}
+                    onChange={(e) => setRefinePrompt(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRefine()}
+                    disabled={isRefining}
+                    className="bg-background"
+                  />
+                  <Button onClick={handleRefine} disabled={isRefining || !refinePrompt.trim()}>
+                    {isRefining ? <Loader2 className="w-4 h-4 animate-spin" /> : '依頼'}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+
             <Card className="p-6">
               <Tabs defaultValue="content" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="content">
-                    <FileText className="w-4 h-4 mr-2" />
+                    <FileText className="w-4 h-4 sm:mr-2" />
                     <span className="hidden sm:inline">内容</span>
                   </TabsTrigger>
+                  <TabsTrigger value="style">
+                    <Layout className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">スタイル</span>
+                  </TabsTrigger>
                   <TabsTrigger value="image">
-                    <ImageIcon className="w-4 h-4 mr-2" />
+                    <ImageIcon className="w-4 h-4 sm:mr-2" />
                     <span className="hidden sm:inline">画像</span>
                   </TabsTrigger>
                   <TabsTrigger value="color">
-                    <Palette className="w-4 h-4 mr-2" />
+                    <Palette className="w-4 h-4 sm:mr-2" />
                     <span className="hidden sm:inline">色</span>
                   </TabsTrigger>
                   <TabsTrigger value="store">
-                    <Store className="w-4 h-4 mr-2" />
+                    <Store className="w-4 h-4 sm:mr-2" />
                     <span className="hidden sm:inline">店舗</span>
                   </TabsTrigger>
                 </TabsList>
@@ -94,11 +141,18 @@ export function EditorInterface({ template, onBack, onTemplateUpdate }: EditorIn
                 <TabsContent value="content" className="space-y-4 mt-4">
                   <div className="space-y-2">
                     <Label htmlFor="catchCopy">キャッチコピー</Label>
-                    <Textarea
+                    <Input
                       id="catchCopy"
                       value={localTemplate.catchCopy}
                       onChange={(e) => updateTemplate({ catchCopy: e.target.value })}
-                      className="min-h-20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tagline">タグライン</Label>
+                    <Input
+                      id="tagline"
+                      value={localTemplate.tagline}
+                      onChange={(e) => updateTemplate({ tagline: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
@@ -107,8 +161,48 @@ export function EditorInterface({ template, onBack, onTemplateUpdate }: EditorIn
                       id="description"
                       value={localTemplate.description}
                       onChange={(e) => updateTemplate({ description: e.target.value })}
-                      className="min-h-32"
+                      className="min-h-24"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>メリット・特徴</Label>
+                    {(localTemplate.benefits || []).map((benefit, idx) => (
+                      <Input
+                        key={idx}
+                        value={benefit}
+                        onChange={(e) => {
+                          const newBenefits = [...(localTemplate.benefits || [])]
+                          newBenefits[idx] = e.target.value
+                          updateTemplate({ benefits: newBenefits })
+                        }}
+                        className="mb-2"
+                      />
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateTemplate({ benefits: [...(localTemplate.benefits || []), ''] })}
+                    >
+                      追加
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="style" className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label>レイアウトスタイル</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['modern', 'classic', 'playful'] as const).map((style) => (
+                        <Button
+                          key={style}
+                          variant={localTemplate.layoutStyle === style ? 'default' : 'outline'}
+                          onClick={() => updateTemplate({ layoutStyle: style })}
+                          className="w-full capitalize"
+                        >
+                          {style}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                 </TabsContent>
 
@@ -116,7 +210,7 @@ export function EditorInterface({ template, onBack, onTemplateUpdate }: EditorIn
                   <div className="space-y-2">
                     <Label>画像エリア位置</Label>
                     <div className="grid grid-cols-2 gap-2">
-                      {['上半分', '全幅', '左半分', '右半分'].map((position) => (
+                      {(['上半分', '全幅', '左半分', '右半分'] as const).map((position) => (
                         <Button
                           key={position}
                           variant={localTemplate.imageArea === position ? 'default' : 'outline'}
@@ -128,28 +222,33 @@ export function EditorInterface({ template, onBack, onTemplateUpdate }: EditorIn
                       ))}
                     </div>
                   </div>
-                  <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
-                    <p>画像をアップロード機能は実装予定です。現在はプレースホルダーが表示されます。</p>
-                  </div>
                 </TabsContent>
 
                 <TabsContent value="color" className="space-y-4 mt-4">
                   <div className="space-y-2">
                     <Label htmlFor="colorTheme">カラーテーマ</Label>
-                    <Input
-                      id="colorTheme"
-                      type="color"
-                      value={localTemplate.colorTheme}
-                      onChange={(e) => updateTemplate({ colorTheme: e.target.value })}
-                      className="h-12"
-                    />
+                    <div className="flex gap-4">
+                      <Input
+                        id="colorTheme"
+                        type="color"
+                        value={localTemplate.colorTheme}
+                        onChange={(e) => updateTemplate({ colorTheme: e.target.value })}
+                        className="h-12 w-20 p-1"
+                      />
+                      <Input
+                        type="text"
+                        value={localTemplate.colorTheme}
+                        onChange={(e) => updateTemplate({ colorTheme: e.target.value })}
+                        className="flex-1 font-mono"
+                      />
+                    </div>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-6 gap-2">
                     {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'].map((color) => (
                       <button
                         key={color}
                         onClick={() => updateTemplate({ colorTheme: color })}
-                        className="h-12 rounded-lg border-2 hover:scale-105 transition-transform"
+                        className="h-10 rounded-full border-2 hover:scale-110 transition-transform"
                         style={{ 
                           backgroundColor: color,
                           borderColor: localTemplate.colorTheme === color ? '#000' : 'transparent'
@@ -160,46 +259,22 @@ export function EditorInterface({ template, onBack, onTemplateUpdate }: EditorIn
                 </TabsContent>
 
                 <TabsContent value="store" className="space-y-4 mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">店舗名</Label>
-                    <Input
-                      id="name"
-                      value={localTemplate.storeInfo.name}
-                      onChange={(e) => updateStoreInfo('name', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="address">住所</Label>
-                    <Input
-                      id="address"
-                      value={localTemplate.storeInfo.address}
-                      onChange={(e) => updateStoreInfo('address', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tel">電話番号</Label>
-                    <Input
-                      id="tel"
-                      value={localTemplate.storeInfo.tel}
-                      onChange={(e) => updateStoreInfo('tel', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="hours">営業時間</Label>
-                    <Input
-                      id="hours"
-                      value={localTemplate.storeInfo.hours}
-                      onChange={(e) => updateStoreInfo('hours', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="access">アクセス</Label>
-                    <Input
-                      id="access"
-                      value={localTemplate.storeInfo.access}
-                      onChange={(e) => updateStoreInfo('access', e.target.value)}
-                    />
-                  </div>
+                  {[
+                    { id: 'name', label: '店舗名' },
+                    { id: 'address', label: '住所' },
+                    { id: 'tel', label: '電話番号' },
+                    { id: 'hours', label: '営業時間' },
+                    { id: 'access', label: 'アクセス' }
+                  ].map((field) => (
+                    <div key={field.id} className="space-y-1">
+                      <Label htmlFor={field.id}>{field.label}</Label>
+                      <Input
+                        id={field.id}
+                        value={localTemplate.storeInfo[field.id as keyof typeof localTemplate.storeInfo]}
+                        onChange={(e) => updateStoreInfo(field.id, e.target.value)}
+                      />
+                    </div>
+                  ))}
                 </TabsContent>
               </Tabs>
             </Card>
@@ -211,7 +286,7 @@ export function EditorInterface({ template, onBack, onTemplateUpdate }: EditorIn
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold">プレビュー</h2>
-                  <div className="text-sm text-muted-foreground">A4サイズ</div>
+                  <div className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">A4</div>
                 </div>
                 <FlyerPreview template={localTemplate} />
               </div>
